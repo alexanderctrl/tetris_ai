@@ -191,7 +191,7 @@ class Tetris:
     def _remove_line(self) -> None:
         """Check for and remove full lines, updating score and level."""
         lines_cleared = 0
-        for y in range(self.rows - 1, -1, -1):
+        for y in range(self.rows):
             if all(cell is not None for cell in self.board[y]):
                 del self.board[y]
                 self.board.insert(0, [None for _ in range(self.cols)])

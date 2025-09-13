@@ -142,11 +142,7 @@ class Tetris:
                 elif event.key == pygame.K_q:
                     self.running = False
 
-        curr_time = pygame.time.get_ticks()
-        if curr_time - self.last_fall_time > self._get_fall_interval():
-            self._soft_drop()
-            self.last_fall_time = curr_time
-
+        self._auto_drop()
         self._update_display()
         self.clock.tick(FPS)
 
@@ -174,6 +170,16 @@ class Tetris:
         max_speed = 100
 
         return max(max_speed, base_speed - (self.level - 1) * speedup_per_level)
+
+    def _auto_drop(self) -> None:
+        """Automatically drop the current tetromino if enough time has passed."""
+        curr_time = pygame.time.get_ticks()
+        if (
+            curr_time - self.last_fall_time > self._get_fall_interval()
+            and not self.game_over
+        ):
+            self._soft_drop()
+            self.last_fall_time = curr_time
 
     def _freeze(self) -> None:
         """Place the current tetromino on the board and spawn a new one."""

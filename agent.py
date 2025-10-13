@@ -6,7 +6,7 @@ import numpy as np
 import torch
 
 from dqn import DQN
-from environment import Action, Tetris
+from environment import Action
 
 Transition = namedtuple(
     "Transition", ("state", "action", "next_state", "reward", "done")
@@ -79,15 +79,18 @@ class Agent:
     ----------
     device : torch.device
         The device on which the agent's neural networks and tensors will be allocated.
+    dim_state : int
+        Dimensionality of the state space (number of input features).
+    dim_action : int
+        Dimensionality of the action space (number of possible actions).
     """
 
-    def __init__(self, device: torch.device) -> None:
+    def __init__(self, device: torch.device, dim_state: int, dim_action: int) -> None:
         self.device = device
 
-        self.game = Tetris()
         self.memory = ReplayMemory(100_000)
-        self.policy_net = DQN(len(self.game.get_state()), len(Action)).to(self.device)
-        self.target_net = DQN(len(self.game.get_state()), len(Action)).to(self.device)
+        self.policy_net = DQN(dim_state, dim_action).to(self.device)
+        self.target_net = DQN(dim_state, dim_action).to(self.device)
 
         self.num_steps = 0
         self.eps_start = 1

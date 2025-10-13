@@ -5,7 +5,7 @@ import torch
 
 import environment
 from agent import Agent
-from environment import Tetris
+from environment import Action, TetrisEnv
 from utils import plot_training_progress
 
 # Config
@@ -33,19 +33,19 @@ def train() -> None:
 
     scores, mean_scores = [], []
     total_score = 0
-    agent = Agent(device)
-    environment = Tetris()
+    env = TetrisEnv()
+    agent = Agent(device, len(env.get_state()), len(Action))
 
     for episode in range(NUM_EPISODES):
-        environment.reset()
-        state = environment.get_state()
+        env.reset()
+        state = env.get_state()
         score = 0
         done = False
 
         while not done:
             action = agent.get_action(state)
-            reward, score, done = environment.step(action)
-            next_state = environment.get_state()
+            reward, score, done = env.step(action)
+            next_state = env.get_state()
             agent.store_transition(state, action, next_state, reward, done)
             state = next_state
             # TODO: optimization of the model

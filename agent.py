@@ -127,7 +127,7 @@ class Agent:
         reward: int,
         done: bool,
     ) -> None:
-        pass  # TODO
+        self.memory.push(state, action, next_state, reward, done)
 
     def optimize_model(self) -> None:
         pass  # TODO

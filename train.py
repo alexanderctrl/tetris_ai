@@ -3,7 +3,6 @@ import random
 import numpy as np
 import torch
 
-import environment
 from agent import Agent
 from environment import Action, TetrisEnv
 from utils import plot_training_progress
@@ -46,10 +45,12 @@ def train() -> None:
             action = agent.get_action(state)
             reward, score, done = env.step(action)
             next_state = env.get_state()
+
             agent.store_transition(state, action, next_state, reward, done)
             state = next_state
-            # TODO: optimization of the model
-            # TODO: syncing of the target network
+
+            agent.optimize_model()
+            agent.sync_target_network()
 
         scores.append(score)
         total_score += score

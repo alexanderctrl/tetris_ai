@@ -55,3 +55,12 @@ class DQN(nn.Module):
 
         file_path = model_folder / file_name
         torch.save(self.state_dict(), file_path)
+
+
+class DQN_Trainer:
+    """
+    TODO
+    """
+
+    def __init__(self):
+        pass

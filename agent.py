@@ -87,7 +87,6 @@ class Agent:
 
     def __init__(self, device: torch.device, dim_state: int, dim_action: int) -> None:
         self.device = device
-
         self.memory = ReplayMemory(100_000)
         self.policy_net = DQN(dim_state, dim_action).to(self.device)
         self.target_net = DQN(dim_state, dim_action).to(self.device)
@@ -98,7 +97,6 @@ class Agent:
         self.eps_decay = 10_000
 
         self.batch_size = 128
-        # TODO: finish initialization
 
     def get_action(self, state: np.ndarray) -> Action:
         """
@@ -110,12 +108,16 @@ class Agent:
             State of the environment.
         """
         eps_sample = random.random()
-        eps_threshold = self.eps_end + (self.eps_start + self.eps_end) * math.exp(
+        eps_threshold = self.eps_end + (self.eps_start - self.eps_end) * math.exp(
             -1 * self.num_steps / self.eps_decay
         )
         self.num_steps += 1
         if eps_sample > eps_threshold:
-            return random.choice(list(Action))  # TODO: change to query DQN
+            with torch.no_grad():
+                q_value_preds = self.policy_net(
+                    torch.tensor(state, dtype=torch.float32).to(self.device)
+                )
+                return Action(torch.argmax(q_value_preds).item())
         else:
             return random.choice(list(Action))
 

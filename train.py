@@ -50,7 +50,7 @@ def train() -> None:
             state = next_state
 
             agent.optimize_model()
-            agent.sync_target_network()
+            agent.soft_update_target_network()
 
         scores.append(score)
         total_score += score

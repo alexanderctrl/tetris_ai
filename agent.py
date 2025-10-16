@@ -6,6 +6,7 @@ import numpy as np
 import torch
 
 from dqn import DQN
+from dqn_trainer import DQN_Trainer
 from environment import Action
 
 Transition = namedtuple(
@@ -72,7 +73,7 @@ class Agent:
     """
     Agent that interacts with the environment using a Deep Q-Network (DQN).
 
-    This class handles action selection, memory storage, and model optimization
+    This class handles action selection, memory storage, and model synchronization
     for the reinforcement learning task.
 
     Parameters
@@ -87,16 +88,20 @@ class Agent:
 
     def __init__(self, device: torch.device, dim_state: int, dim_action: int) -> None:
         self.device = device
-        self.memory = ReplayMemory(100_000)
+        self.batch_size = 128
+        self.gamma = 0.9
+        self.tau = 0.01
+
         self.policy_net = DQN(dim_state, dim_action).to(self.device)
         self.target_net = DQN(dim_state, dim_action).to(self.device)
+        self.target_net.load_state_dict(self.policy_net.state_dict())
+        self.memory = ReplayMemory(100_000)
+        self.trainer = DQN_Trainer(self.policy_net, self.target_net, self.gamma)
 
         self.num_steps = 0
         self.eps_start = 1
         self.eps_end = 0.1
         self.eps_decay = 10_000
-
-        self.batch_size = 128
 
     def get_action(self, state: np.ndarray) -> Action:
         """
@@ -132,10 +137,47 @@ class Agent:
         self.memory.push(state, action, next_state, reward, done)
 
     def optimize_model(self) -> None:
-        pass  # TODO
+        """
+        Perform a single optimization step for the agent's policy network.
 
-    def sync_target_network(self) -> None:
-        pass  # TODO
+        This method performs the following steps:
+        1. Samples a batch of transitions from the agent's replay memory.
+        2. Converts the batch elements to tensors and moves them to the correct device.
+        3. Passes the batch to the trainer, which computes the temporal difference
+        error and performs the gradient descent step on the policy network.
+
+        If the replay memory contains fewer transitions than the batch size,
+        no optimization step is performed.
+        """
+        if len(self.memory) < self.batch_size:
+            return
+
+        transitions = self.memory.sample(self.batch_size)
+        states, actions, next_states, rewards, dones = zip(*transitions)
+
+        states = torch.tensor(states, dtype=torch.float32).to(self.device)
+        actions = torch.tensor(actions, dtype=torch.int64).unsqueeze(1).to(self.device)
+        next_states = torch.tensor(next_states, dtype=torch.float32).to(self.device)
+        rewards = (
+            torch.tensor(rewards, dtype=torch.float32).unsqueeze(1).to(self.device)
+        )
+        dones = torch.tensor(dones, dtype=torch.float32).unsqueeze(1).to(self.device)
+
+        self.trainer.optimize_model(states, actions, next_states, rewards, dones)
+
+    def soft_update_target_network(self) -> None:
+        """
+        Perform a soft update of the target network parameters toward the policy
+        network using Polyak averaging.
+        """
+        policy_net_state_dict = self.policy_net.state_dict()
+        target_net_state_dict = self.target_net.state_dict()
+        for key in policy_net_state_dict:
+            target_net_state_dict[key] = (
+                self.tau * policy_net_state_dict[key]
+                + (1 - self.tau) * target_net_state_dict[key]
+            )
+        self.target_net.load_state_dict(target_net_state_dict)
 
     def save_model(self, file_name: str = "model.pt") -> None:
         """

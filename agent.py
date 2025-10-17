@@ -30,10 +30,10 @@ class ReplayMemory(object):
     def push(
         self,
         state: np.ndarray,
-        action: int,
+        action: np.int64,
         next_state: np.ndarray,
-        reward: int,
-        done: bool,
+        reward: np.float32,
+        done: np.float32,
     ) -> None:
         """
         Store a new transition. If the maximum capacity is reached, replace the
@@ -43,14 +43,14 @@ class ReplayMemory(object):
         ----------
         state : np.ndarray
             State of the environment.
-        action : int
+        action : np.int64
             Action performed by the agent.
         next_state : np.ndarray
             Resulting state of the environment after performing the action.
-        reward : int
+        reward : np.float32
             Reward received after performing the action.
-        done: bool
-            Boolean flag that indicates a terminal state.
+        done: np.float32
+            Flag that indicates a terminal state.
         """
         self.memory.append(Transition(state, action, next_state, reward, done))
 
@@ -134,7 +134,9 @@ class Agent:
         reward: int,
         done: bool,
     ) -> None:
-        self.memory.push(state, action, next_state, reward, done)
+        self.memory.push(
+            state, np.int64(action), next_state, np.float32(reward), np.float32(done)
+        )
 
     def optimize_model(self) -> None:
         """
@@ -155,9 +157,15 @@ class Agent:
         transitions = self.memory.sample(self.batch_size)
         states, actions, next_states, rewards, dones = zip(*transitions)
 
+        states = np.stack(states)
+        next_states = np.stack(next_states)
+        actions = np.array(actions)
+        rewards = np.array(rewards)
+        dones = np.array(dones)
+
         states = torch.tensor(states, dtype=torch.float32).to(self.device)
-        actions = torch.tensor(actions, dtype=torch.int64).unsqueeze(1).to(self.device)
         next_states = torch.tensor(next_states, dtype=torch.float32).to(self.device)
+        actions = torch.tensor(actions, dtype=torch.int64).unsqueeze(1).to(self.device)
         rewards = (
             torch.tensor(rewards, dtype=torch.float32).unsqueeze(1).to(self.device)
         )

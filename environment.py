@@ -114,7 +114,8 @@ class TetrisEnv:
         next_tetromino_shape = self.next_tetromino.shape()
 
         return np.concatenate(
-            [board, curr_tetromino_shape, curr_tetromino_pos, next_tetromino_shape]
+            [board, curr_tetromino_shape, curr_tetromino_pos, next_tetromino_shape],
+            dtype=np.float32,
         )
 
     def reset(self) -> None:

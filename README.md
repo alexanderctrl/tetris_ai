@@ -14,6 +14,18 @@ TODO
 The Tetris game itself is fully implemented.
 The next steps of this project are going to be the implementation of the DQN agent, adding training analytics and visualizations, and finally providing a 1-player mode against an easy, medium, or hard AI.
 
+## 🧪 Future Experiments
+
+Some ideas and experiments I plan to try in the future:
+
+- Compare **MLP vs. CNN** architectures for the DQN agent.
+- Experiment with different **loss functions** (e.g., `SmoothL1Loss` vs. `MSELoss`)
+- Experiment with different **optimization algorithms** (e.g., `AdamW` vs. `Adam`)
+- Try different **state representations** for the environment.
+- Try different **reward strategies**.
+- Try various **explorations strategies** for the agent.
+- Experiment with **prioritized experience replay**.
+
 ## 📦 Installation
 
 TODO

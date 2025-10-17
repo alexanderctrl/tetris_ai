@@ -1,6 +1,10 @@
 import argparse
+import cProfile
+import io
+import pstats
 import random
 import time
+from contextlib import contextmanager
 
 import numpy as np
 import torch
@@ -11,6 +15,17 @@ from utils import plot_training_progress
 
 # Config
 NUM_EPISODES = 500
+
+
+@contextmanager
+def profiling():
+    """Context manager for profiling a code block."""
+    pr = cProfile.Profile()
+    if args.profile:
+        pr.enable()
+    yield pr
+    if args.profile:
+        pr.disable()
 
 
 def set_global_seeds(seed: int = 42) -> None:
@@ -83,14 +98,24 @@ if __name__ == "__main__":
     parser.add_argument(
         "--headless", help="run the environment in headless mode", action="store_true"
     )
+    parser.add_argument(
+        "--profile", help="enable profiling for the training loop", action="store_true"
+    )
     args = parser.parse_args()
 
     start_time = time.perf_counter()
 
-    set_global_seeds()
-    train()
+    with profiling() as pr:
+        set_global_seeds()
+        train()
 
     elapsed_time = time.perf_counter() - start_time
     hours, rem = divmod(elapsed_time, 3600)
     minutes, seconds = divmod(rem, 60)
     print(f"Total training time: {int(hours)}h {int(minutes)}m {seconds:.2f}s")
+
+    if args.profile:
+        s = io.StringIO()
+        ps = pstats.Stats(pr, stream=s).sort_stats(pstats.SortKey.CUMULATIVE)
+        ps.print_stats(50)
+        print(s.getvalue())

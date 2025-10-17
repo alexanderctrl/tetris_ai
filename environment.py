@@ -19,7 +19,6 @@ WIDTH: int = 480
 HEIGHT: int = 640
 SCORING: dict[int, int] = {1: 100, 2: 200, 3: 500, 4: 800}
 CELL_SIZE: int = 25
-FPS: int = 60
 
 # Colors
 BLACK: tuple[int, int, int] = (0, 0, 0)
@@ -101,11 +100,9 @@ class TetrisEnv:
         self._auto_drop()
         reward = self.score - prev_score
 
-        if self.headless:
-            self.clock.tick()
-        else:
+        if not self.headless:
             self._update_display()
-            self.clock.tick(FPS)
+        self.clock.tick()
 
         return reward, self.score, self.game_over
 

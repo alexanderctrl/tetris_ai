@@ -50,7 +50,7 @@ class ReplayMemory(object):
         reward : int
             Reward received after performing the action.
         done: bool
-            Flag that indicates a terminal state.
+            Boolean flag that indicates a terminal state.
         """
         self.memory.append(Transition(state, action, next_state, reward, done))
 

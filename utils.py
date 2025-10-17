@@ -22,7 +22,7 @@ def plot_training_progress(
     mean_scores : list[float]
         The running mean scores up to each episode.
     save_and_close : bool, optional
-        Flag that indicates whether to save and close the plot.
+        Boolean flag that indicates whether to save and close the plot.
     file_name : str, optional
         Name of the file to save the plot to. Default: ``"training_progress.pdf"``.
     """

@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import os
 from enum import IntEnum
 from typing import Optional
 
 import numpy as np
+
+os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 import pygame
 
 from tetromino import Tetromino
@@ -41,13 +44,16 @@ class TetrisEnv:
 
     Parameters
     ----------
+    headless : bool
+        Boolean flag indicating whether to run the environment in headless mode.
     rows : int, optional
         Number of rows in the game board. Default: ``20``.
     cols : int, optional
         Number of columns in the game board. Default: ``10``.
     """
 
-    def __init__(self, rows: int = 20, cols: int = 10) -> None:
+    def __init__(self, headless: bool, rows: int = 20, cols: int = 10) -> None:
+        self.headless = headless
         self.rows = rows
         self.cols = cols
 
@@ -58,12 +64,15 @@ class TetrisEnv:
         self.game_over: bool = False
 
         pygame.init()
+        if self.headless:
+            self.display: pygame.Surface = pygame.Surface((WIDTH, HEIGHT))
+        else:
+            self.display: pygame.Surface = pygame.display.set_mode(
+                (WIDTH, HEIGHT), flags=(pygame.RESIZABLE | pygame.SCALED)
+            )
+            pygame.display.set_caption("Tetris")
         self.last_fall_time: int = pygame.time.get_ticks()
         self.font: pygame.font.Font = pygame.font.Font("arial.ttf", 25)
-        self.display: pygame.Surface = pygame.display.set_mode(
-            (WIDTH, HEIGHT), flags=(pygame.RESIZABLE | pygame.SCALED)
-        )
-        pygame.display.set_caption("Tetris")
         self.clock: pygame.time.Clock = pygame.time.Clock()
 
         self.board: Board = [[None for _ in range(self.cols)] for _ in range(self.rows)]
@@ -92,8 +101,11 @@ class TetrisEnv:
         self._auto_drop()
         reward = self.score - prev_score
 
-        self._update_display()
-        self.clock.tick(FPS)
+        if self.headless:
+            self.clock.tick()
+        else:
+            self._update_display()
+            self.clock.tick(FPS)
 
         return reward, self.score, self.game_over
 

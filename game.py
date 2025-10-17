@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import os
 from typing import Optional
 
+os.environ["PYGAME_HIDE_SUPPORT_PROMPT"] = "1"
 import pygame
 
 from tetromino import Tetromino
@@ -42,15 +44,15 @@ class Tetris:
         self.total_lines_cleared: int = 0
         self.score: int = 0
         self.level: int = 1
-        self.last_fall_time: int = pygame.time.get_ticks()
         self.running: bool = True
         self.game_over: bool = False
 
-        self.font: pygame.font.Font = pygame.font.Font("arial.ttf", 25)
         self.display: pygame.Surface = pygame.display.set_mode(
             (WIDTH, HEIGHT), flags=(pygame.RESIZABLE | pygame.SCALED)
         )
         pygame.display.set_caption("Tetris")
+        self.last_fall_time: int = pygame.time.get_ticks()
+        self.font: pygame.font.Font = pygame.font.Font("arial.ttf", 25)
         self.clock: pygame.time.Clock = pygame.time.Clock()
 
         self.board: Board = [[None for _ in range(self.cols)] for _ in range(self.rows)]

@@ -1,4 +1,6 @@
+import argparse
 import random
+import time
 
 import numpy as np
 import torch
@@ -32,7 +34,7 @@ def train() -> None:
 
     scores, mean_scores = [], []
     total_score = 0
-    env = TetrisEnv()
+    env = TetrisEnv(args.headless)
     agent = Agent(device, len(env.get_state()), len(Action))
 
     for episode in range(NUM_EPISODES):
@@ -77,5 +79,18 @@ if __name__ == "__main__":
         torch.cuda.is_available()
     ), "CUDA not available. Please check your PyTorch installation."
 
+    parser = argparse.ArgumentParser(description="Train a DQN agent to play Tetris.")
+    parser.add_argument(
+        "--headless", help="run the environment in headless mode", action="store_true"
+    )
+    args = parser.parse_args()
+
+    start_time = time.perf_counter()
+
     set_global_seeds()
     train()
+
+    elapsed_time = time.perf_counter() - start_time
+    hours, rem = divmod(elapsed_time, 3600)
+    minutes, seconds = divmod(rem, 60)
+    print(f"Total training time: {int(hours)}h {int(minutes)}m {seconds:.2f}s")

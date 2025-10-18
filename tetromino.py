@@ -3,6 +3,8 @@ from __future__ import annotations
 import random
 from typing import ClassVar
 
+import numpy as np
+
 
 class Tetromino:
     """
@@ -61,3 +63,23 @@ class Tetromino:
         new_piece.type = self.type
         new_piece.rotation = self.rotation
         return new_piece
+
+    def encode(self, rows: int, cols: int) -> np.ndarray:
+        """
+        Return a 2D array of shape (rows, cols) with 1s where the tetromino occupies cells.
+
+        Parameters
+        ----------
+        rows : int
+            Number of rows in the game board.
+        cols : int
+            Number of columns in the game board.
+        """
+        encoded_board = np.zeros((rows, cols), dtype=np.float32)
+        for idx in self.shape():
+            y_offset, x_offset = divmod(idx, 4)
+            y = self.y + y_offset
+            x = self.x + x_offset
+            if 0 <= y < rows and 0 <= x < cols:
+                encoded_board[y, x] = 1
+        return encoded_board

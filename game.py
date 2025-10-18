@@ -360,7 +360,7 @@ class Tetris:
             The y-coordinate of the top edge of the game grid.
         right : int
             The x-coordinate of the right edge of the game grid.
-        grid_heigt: int
+        grid_height: int
             The height of the main game grid.
         """
         for i in range(4):
@@ -410,7 +410,7 @@ class Tetris:
             The y-coordinate of the top edge of the game grid.
         grid_width : int
             The width of the main game grid.
-        grid_heigt: int
+        grid_height: int
             The height of the main game grid.
         """
         rect = pygame.Rect(

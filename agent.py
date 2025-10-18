@@ -80,37 +80,41 @@ class Agent:
     ----------
     device : torch.device
         The device on which the agent's neural networks and tensors will be allocated.
-    dim_state : int
-        Dimensionality of the state space (number of input features).
-    dim_action : int
-        Dimensionality of the action space (number of possible actions).
+    num_channels : int
+        Number of channels representing the environment's state. Each channel is a 20x10 board that encodes a specific characteristic of the game.
+    num_actions : int
+        Number of possible actions.
     """
 
-    def __init__(self, device: torch.device, dim_state: int, dim_action: int) -> None:
+    def __init__(
+        self, device: torch.device, num_channels: int, num_actions: int
+    ) -> None:
         self.device = device
-        self.batch_size = 128
-        self.gamma = 0.9
+        self.batch_size = 256
+        self.gamma = 0.99
         self.tau = 0.01
 
-        self.policy_net = DQN(dim_state, dim_action).to(self.device)
-        self.target_net = DQN(dim_state, dim_action).to(self.device)
+        self.policy_net = DQN(num_channels, num_actions).to(self.device)
+        self.target_net = DQN(num_channels, num_actions).to(self.device)
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.memory = ReplayMemory(100_000)
         self.trainer = DQN_Trainer(self.policy_net, self.target_net, self.gamma)
 
         self.num_steps = 0
         self.eps_start = 1
-        self.eps_end = 0.1
+        self.eps_end = 0.025
         self.eps_decay = 10_000
 
-    def get_action(self, state: np.ndarray) -> Action:
+    def get_action(self, state: np.ndarray, valid_actions: list[Action]) -> Action:
         """
-        Get the next action based on an epsilon greedy policy.
+        Get the next action based on an epsilon greedy policy, restricted to valid actions.
 
         Parameters
         ----------
         state : np.ndarray
             State of the environment.
+        valid_actions : list[Action]
+            List of valid actions available in the current state.
         """
         eps_sample = random.random()
         eps_threshold = self.eps_end + (self.eps_start - self.eps_end) * math.exp(
@@ -119,19 +123,25 @@ class Agent:
         self.num_steps += 1
         if eps_sample > eps_threshold:
             with torch.no_grad():
-                q_value_preds = self.policy_net(
-                    torch.tensor(state, dtype=torch.float32).to(self.device)
+                q_value_preds = (
+                    self.policy_net(
+                        torch.tensor(state, dtype=torch.float32).to(self.device)
+                    )
+                    .cpu()
+                    .numpy()
+                    .squeeze()
                 )
-                return Action(torch.argmax(q_value_preds).item())
+
+                return max(valid_actions, key=lambda a: q_value_preds[a.value])
         else:
-            return random.choice(list(Action))
+            return random.choice(valid_actions)
 
     def store_transition(
         self,
         state: np.ndarray,
         action: int,
         next_state: np.ndarray,
-        reward: int,
+        reward: float,
         done: bool,
     ) -> None:
         self.memory.push(
@@ -197,3 +207,6 @@ class Agent:
             Name of the file to save the model parameters to. Default: ``"model.pt"``.
         """
         self.target_net.save(file_name)
+
+    def get_gamma(self) -> float:
+        return self.gamma

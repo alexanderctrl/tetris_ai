@@ -81,7 +81,7 @@ class TetrisEnv:
     def is_running(self) -> bool:
         return self.running
 
-    def step(self, action: Action) -> tuple[int, int, bool]:
+    def step(self, action: Action) -> tuple[float, int, bool]:
         """
         Handle one iteration of the main game loop and return the reward,
         current_score, and game_over state.
@@ -91,14 +91,18 @@ class TetrisEnv:
         action : Action
             The action chosen by the agent.
         """
-        prev_score = self.score
+        prev_lines_cleared = self.total_lines_cleared
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 self.running = False
 
         self._move(action)
         self._auto_drop()
-        reward = self.score - prev_score
+
+        curr_lines_cleared = self.total_lines_cleared
+        reward = SCORING.get(curr_lines_cleared - prev_lines_cleared, 0) / 100
+        if self.game_over:
+            reward = -10
 
         if not self.headless:
             self._update_display()
@@ -106,16 +110,20 @@ class TetrisEnv:
 
         return reward, self.score, self.game_over
 
-    def get_state(self) -> np.ndarray:
-        """Return the state of the environment."""
-        board = [0 if row is None else 1 for col in self.board for row in col]
-        curr_tetromino_shape = self.curr_tetromino.shape()
-        curr_tetromino_pos = [self.curr_tetromino.x, self.curr_tetromino.y]
-        next_tetromino_shape = self.next_tetromino.shape()
-
-        return np.concatenate(
-            [board, curr_tetromino_shape, curr_tetromino_pos, next_tetromino_shape],
+    def get_state(self) -> tuple[np.ndarray, list[Action]]:
+        """Return the state of the environment and valid actions of the state."""
+        board = np.array(
+            [[1 if col is not None else 0 for col in row] for row in self.board],
             dtype=np.float32,
+        )
+        cur_tetromino = self.curr_tetromino.encode(self.rows, self.cols)
+        next_tetromino = self.next_tetromino.encode(self.rows, self.cols)
+
+        valid_actions = self._get_valid_actions()
+
+        return (
+            np.stack([board, cur_tetromino, next_tetromino], dtype=np.float32),
+            valid_actions,
         )
 
     def reset(self) -> None:
@@ -129,6 +137,30 @@ class TetrisEnv:
         self.board = [[None for _ in range(self.cols)] for _ in range(self.rows)]
         self.curr_tetromino = Tetromino(4, 0)
         self.next_tetromino = Tetromino(4, 0)
+
+    def _get_valid_actions(self) -> list[Action]:
+        """Return a list of all valid actions available in the current state."""
+        valid_actions: list[Action] = []
+
+        self.curr_tetromino.x -= 1
+        if not self._intersects():
+            valid_actions.append(Action.MOVE_LEFT)
+        self.curr_tetromino.x += 1
+
+        self.curr_tetromino.x += 1
+        if not self._intersects():
+            valid_actions.append(Action.MOVE_RIGHT)
+        self.curr_tetromino.x -= 1
+
+        prev_rotation = self.curr_tetromino.rotation
+        self.curr_tetromino.rotate()
+        if not self._intersects():
+            valid_actions.append(Action.ROTATE)
+        self.curr_tetromino.rotation = prev_rotation
+
+        valid_actions.append(Action.SOFT_DROP)
+        valid_actions.append(Action.HARD_DROP)
+        return valid_actions
 
     def _new_tetromino(self) -> None:
         """Set the next tetromino as the current one and randomly choose the next."""
@@ -401,7 +433,7 @@ class TetrisEnv:
             The y-coordinate of the top edge of the game grid.
         right : int
             The x-coordinate of the right edge of the game grid.
-        grid_heigt: int
+        grid_height: int
             The height of the main game grid.
         """
         for i in range(4):
@@ -451,7 +483,7 @@ class TetrisEnv:
             The y-coordinate of the top edge of the game grid.
         grid_width : int
             The width of the main game grid.
-        grid_heigt: int
+        grid_height: int
             The height of the main game grid.
         """
         rect = pygame.Rect(

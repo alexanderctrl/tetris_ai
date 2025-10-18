@@ -12,17 +12,21 @@ class DQN(nn.Module):
 
     Parameters
     ----------
-    dim_state : int
-        Dimensionality of the state space (number of input features).
-    dim_action : int
-        Dimensionality of the action space (number of possible actions).
+    num_channels : int
+        Number of channels representing the environment's state. Each channel is a 20x10 board that encodes a specific characteristic of the game.
+    num_actions : int
+        Number of possible actions.
     """
 
-    def __init__(self, dim_state: int, dim_action: int) -> None:
+    def __init__(self, num_channels: int, num_actions: int) -> None:
         super().__init__()
-        self.layer1 = nn.Linear(dim_state, 128)
-        self.layer2 = nn.Linear(128, 128)
-        self.layer3 = nn.Linear(128, dim_action)
+        self.conv1 = nn.Conv2d(num_channels, 16, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(16, 32, kernel_size=3, padding=1)
+        self.conv3 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.fc1 = nn.Linear(64 * 10 * 5, 512)
+        self.fc2 = nn.Linear(512, 512)
+        self.fc3 = nn.Linear(512, num_actions)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
@@ -31,11 +35,18 @@ class DQN(nn.Module):
         Parameters
         ----------
         x : torch.Tensor
-            Input tensor representing the current batch of states of shape (batch_size, dim_state).
+            Input tensor representing the current batch of states of shape (batch_size, num_channels, height, width).
         """
-        x = F.relu(self.layer1(x))
-        x = F.relu(self.layer2(x))
-        return self.layer3(x)
+        if x.dim() == 3:
+            x = x.unsqueeze(0)
+
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
+        x = self.pool(F.relu(self.conv3(x)))
+        x = torch.flatten(x, 1)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        return self.fc3(x)
 
     def save(self, file_name: str) -> None:
         """

@@ -47,42 +47,58 @@ def train() -> None:
     device = torch.device("cuda", torch.cuda.current_device())
     print(f"Training on device: {device}")
 
-    scores, mean_scores = [], []
-    total_score = 0
     env = TetrisEnv(args.headless)
-    agent = Agent(device, len(env.get_state()), len(Action))
+    agent = Agent(device, env.get_state()[0].shape[0], len(Action))
+    scores, mean_scores = [], []
+    discounted_returns, mean_discounted_returns = [], []
+    total_score, total_discounted_return = 0, 0
+    discount_factor = agent.get_gamma()
 
     for episode in range(NUM_EPISODES):
         env.reset()
-        state = env.get_state()
+        state, valid_actions = env.get_state()
+        step = 0
         score = 0
+        discounted_return = 0
         done = False
 
         while not done:
-            action = agent.get_action(state)
+            action = agent.get_action(state, valid_actions)
             reward, score, done = env.step(action)
-            next_state = env.get_state()
+            discounted_return += discount_factor**step * reward
+            next_state, valid_actions = env.get_state()
 
             agent.store_transition(state, action, next_state, reward, done)
             state = next_state
 
             agent.optimize_model()
             agent.soft_update_target_network()
+            step += 1
 
         scores.append(score)
+        discounted_returns.append(discounted_return)
         total_score += score
         mean_score = total_score / (episode + 1)
+        total_discounted_return += discounted_return
+        mean_discounted_return = total_discounted_return / (episode + 1)
         mean_scores.append(mean_score)
+        mean_discounted_returns.append(mean_discounted_return)
 
+        print(f"--------------- Episode {episode+1}/{NUM_EPISODES} ---------------")
+        print(f"Score: {score} - Mean Score: {mean_score:.2f}")
         print(
-            f"Episode {episode}/{NUM_EPISODES} - Score: {score} - Mean Score: {mean_score}"
+            f"Discounted Return: {discounted_return:.2f} - Mean Discounted Return: {mean_discounted_return:.2f}"
         )
-        plot_training_progress(scores, mean_scores)
+        plot_training_progress(
+            scores, mean_scores, discounted_returns, mean_discounted_returns
+        )
 
     print("Training complete")
     plot_training_progress(
         scores,
         mean_scores,
+        discounted_returns,
+        mean_discounted_returns,
         save_and_close=True,
         file_name=f"training_progess_dqn_{NUM_EPISODES}_episodes.pdf",
     )

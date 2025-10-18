@@ -18,6 +18,10 @@ The next steps of this project are going to be the implementation of the DQN age
 
 Some ideas and experiments I plan to try in the future:
 
+- Switch from encoding individual move actions (left, right, rotate, ...) to encoding possible **(rotation, column)** placement pairs for each piece.
+  - Implement a **PlacementSimulator** to compute possible placements.
+  - Implement a **MovePlanner** to translate high-level placement decisions into executable move sequences.
+  - Restructure the AI architecture to integrate the MovePlanner and support the new placement-based action representation.
 - Compare **MLP vs. CNN** architectures for the DQN agent.
 - Experiment with different **loss functions** (e.g., `SmoothL1Loss` vs. `MSELoss`)
 - Experiment with different **optimization algorithms** (e.g., `AdamW` vs. `Adam`)

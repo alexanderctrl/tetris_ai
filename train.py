@@ -15,7 +15,7 @@ from tetromino import Tetromino
 from utils import plot_training_progress
 
 # Config
-NUM_EPISODES = 5500
+NUM_EPISODES = 2001
 
 
 @contextmanager
@@ -119,6 +119,7 @@ def train(device: torch.device) -> None:
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    device = torch.device("cpu")
     print(f"Training on device: {device}")
 
     parser = argparse.ArgumentParser(description="Train a DQN agent to play Tetris.")

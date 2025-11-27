@@ -97,17 +97,17 @@ class Agent:
         self.policy_net = DQN(num_channels, num_actions).to(self.device)
         self.target_net = DQN(num_channels, num_actions).to(self.device)
 
-        path = "models/dqn_6000_episodes.pt"
-        state_dict = torch.load(path, map_location=self.device)
-        self.policy_net.load_state_dict(state_dict)
+        # path = "models/dqn_6000_episodes.pt"
+        # state_dict = torch.load(path, map_location=self.device)
+        # self.policy_net.load_state_dict(state_dict)
         self.target_net.load_state_dict(self.policy_net.state_dict())
 
         self.memory = ReplayMemory(100_000)
         self.trainer = DQN_Trainer(self.policy_net, self.target_net, self.gamma)
 
         self.num_steps = 0
-        # self.eps_start = 1
-        self.eps_start = 0.1
+        self.eps_start = 1
+        # self.eps_start = 0.1
         self.eps_end = 0.025
         self.eps_decay = 10_000
 

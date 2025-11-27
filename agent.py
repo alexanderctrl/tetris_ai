@@ -96,12 +96,18 @@ class Agent:
 
         self.policy_net = DQN(num_channels, num_actions).to(self.device)
         self.target_net = DQN(num_channels, num_actions).to(self.device)
+
+        path = "models/dqn_6000_episodes.pt"
+        state_dict = torch.load(path, map_location=self.device)
+        self.policy_net.load_state_dict(state_dict)
         self.target_net.load_state_dict(self.policy_net.state_dict())
+
         self.memory = ReplayMemory(100_000)
         self.trainer = DQN_Trainer(self.policy_net, self.target_net, self.gamma)
 
         self.num_steps = 0
-        self.eps_start = 1
+        # self.eps_start = 1
+        self.eps_start = 0.1
         self.eps_end = 0.025
         self.eps_decay = 10_000
 
@@ -131,21 +137,25 @@ class Agent:
                     .numpy()
                     .squeeze()
                 )
+                return max(valid_actions, key=lambda a: q_value_preds[a.to_index()])
 
-                return max(valid_actions, key=lambda a: q_value_preds[a.value])
         else:
             return random.choice(valid_actions)
 
     def store_transition(
         self,
         state: np.ndarray,
-        action: int,
+        action: Action,
         next_state: np.ndarray,
         reward: float,
         done: bool,
     ) -> None:
         self.memory.push(
-            state, np.int64(action), next_state, np.float32(reward), np.float32(done)
+            state,
+            np.int64(action.to_index()),
+            next_state,
+            np.float32(reward),
+            np.float32(done),
         )
 
     def optimize_model(self) -> None:

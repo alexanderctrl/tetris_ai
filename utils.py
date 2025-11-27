@@ -40,7 +40,6 @@ def plot_training_progress(
     ax1 = plt.gca()
     cmap_left = cmx.get_cmap("Blues")
     ax1.set_ylabel("Score")
-    ax1.set_ylim(ymin=0)
     ax1.plot(scores, label="Score", color=cmap_left(0.95))
     ax1.plot(mean_scores, label="Mean Score", color=cmap_left(0.75))
     ax1.text(len(scores) - 1, scores[-1], f"{scores[-1]}", ha="left")
@@ -68,7 +67,6 @@ def plot_training_progress(
     )
     ax2.legend(loc="upper right")
 
-    plt.tight_layout()
     plt.show(block=False)
     plt.pause(0.01)
 

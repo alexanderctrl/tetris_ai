@@ -11,10 +11,11 @@ import torch
 
 from agent import Agent
 from environment import Action, TetrisEnv
+from tetromino import Tetromino
 from utils import plot_training_progress
 
 # Config
-NUM_EPISODES = 500
+NUM_EPISODES = 5500
 
 
 @contextmanager
@@ -42,13 +43,24 @@ def set_global_seeds(seed: int = 42) -> None:
     torch.manual_seed(seed)
 
 
-def train() -> None:
-    """Main training function for the reinforcement learning agent."""
-    device = torch.device("cuda", torch.cuda.current_device())
-    print(f"Training on device: {device}")
+def train(device: torch.device) -> None:
+    """
+    Main training function for the reinforcement learning agent.
+
+    Parameters
+    ----------
+    device : torch.device
+        The device to train on.
+    """
 
     env = TetrisEnv(args.headless)
-    agent = Agent(device, env.get_state()[0].shape[0], len(Action))
+    agent = Agent(
+        device,
+        env.get_state()[0].shape[0],
+        env.cols
+        * max(len(Tetromino.figures[piece_type]) for piece_type in Tetromino.types),
+    )
+    Action.board_cols = env.cols
     scores, mean_scores = [], []
     discounted_returns, mean_discounted_returns = [], []
     total_score, total_discounted_return = 0, 0
@@ -106,9 +118,8 @@ def train() -> None:
 
 
 if __name__ == "__main__":
-    assert (
-        torch.cuda.is_available()
-    ), "CUDA not available. Please check your PyTorch installation."
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    print(f"Training on device: {device}")
 
     parser = argparse.ArgumentParser(description="Train a DQN agent to play Tetris.")
     parser.add_argument(
@@ -123,7 +134,7 @@ if __name__ == "__main__":
 
     with profiling() as pr:
         set_global_seeds()
-        train()
+        train(device)
 
     elapsed_time = time.perf_counter() - start_time
     hours, rem = divmod(elapsed_time, 3600)

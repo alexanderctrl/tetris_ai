@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import os
-from enum import IntEnum
 from typing import Optional
 
 import numpy as np
@@ -26,14 +25,31 @@ WHITE: tuple[int, int, int] = (255, 255, 255)
 RED: tuple[int, int, int] = (252, 91, 122)
 
 
-class Action(IntEnum):
-    """Enumeration of all possible actions the agent can take in the environment."""
+class Action:
+    """
+    Represents a high-level Tetris placement decision.
 
-    MOVE_LEFT = 0
-    MOVE_RIGHT = 1
-    ROTATE = 2
-    SOFT_DROP = 3
-    HARD_DROP = 4
+    Parameters
+    ----------
+    x : int
+        The resulting horizontal position of the tetromino on the board.
+    rotation : int
+        The resulting rotation index of the tetromino.
+    """
+
+    board_cols: int = 0
+    x_offset: int = max(
+        min(j % 4 for rotation in Tetromino.figures[piece_type] for j in rotation)
+        for piece_type in Tetromino.types
+    )
+
+    def __init__(self, x: int, rotation: int) -> None:
+        self.x = x
+        self.rotation = rotation
+
+    def to_index(self) -> int:
+        """Encode this action as a single index for the DQN output."""
+        return self.rotation * Action.board_cols + self.x + Action.x_offset
 
 
 class TetrisEnv:
@@ -77,6 +93,7 @@ class TetrisEnv:
         self.board: Board = [[None for _ in range(self.cols)] for _ in range(self.rows)]
         self.curr_tetromino: Tetromino = Tetromino(4, 0)
         self.next_tetromino: Tetromino = Tetromino(4, 0)
+        self.prev_fitness: float = 0
 
     def is_running(self) -> bool:
         return self.running
@@ -99,16 +116,48 @@ class TetrisEnv:
         self._move(action)
         self._auto_drop()
 
-        curr_lines_cleared = self.total_lines_cleared
-        reward = SCORING.get(curr_lines_cleared - prev_lines_cleared, 0) / 100
-        if self.game_over:
-            reward = -10
+        curr_fitness = self._compute_fitness(
+            int(SCORING.get(self.total_lines_cleared - prev_lines_cleared, 0) / 100)
+        )
+        reward = curr_fitness - self.prev_fitness
+        self.prev_fitness = curr_fitness
 
         if not self.headless:
             self._update_display()
         self.clock.tick()
 
         return reward, self.score, self.game_over
+
+    def _compute_fitness(self, lines: int) -> float:
+        """Compute the Tetris fitness function based on the current board state."""
+        board_heights = [0] * self.cols
+        holes = 0
+        bumpiness = 0
+
+        for x in range(self.cols):
+            column_filled = False
+            for y in range(self.rows):
+                if self.board[y][x] is not None:
+                    if not column_filled:
+                        board_heights[x] = self.rows - y
+                        column_filled = True
+                elif column_filled:
+                    holes += 1
+
+        for i in range(self.cols - 1):
+            bumpiness += abs(board_heights[i] - board_heights[i + 1])
+
+        height = sum(board_heights)
+        max_height = max(board_heights)
+
+        fitness = (
+            -0.51 * height
+            - 0.1 * max_height
+            + 0.76 * lines
+            - 0.36 * holes
+            - 0.18 * bumpiness
+        )
+        return fitness
 
     def get_state(self) -> tuple[np.ndarray, list[Action]]:
         """Return the state of the environment and valid actions of the state."""
@@ -137,29 +186,27 @@ class TetrisEnv:
         self.board = [[None for _ in range(self.cols)] for _ in range(self.rows)]
         self.curr_tetromino = Tetromino(4, 0)
         self.next_tetromino = Tetromino(4, 0)
+        self.prev_fitness = 0
 
     def _get_valid_actions(self) -> list[Action]:
         """Return a list of all valid actions available in the current state."""
         valid_actions: list[Action] = []
+        piece = self.curr_tetromino
+        prev_x, prev_y, prev_rotation = piece.x, piece.y, piece.rotation
 
-        self.curr_tetromino.x -= 1
-        if not self._intersects():
-            valid_actions.append(Action.MOVE_LEFT)
-        self.curr_tetromino.x += 1
+        for rotation in range(len(Tetromino.figures[piece.type])):
+            piece.rotation = rotation
 
-        self.curr_tetromino.x += 1
-        if not self._intersects():
-            valid_actions.append(Action.MOVE_RIGHT)
-        self.curr_tetromino.x -= 1
+            min_x = -min(j % 4 for j in piece.shape())
+            max_x = self.cols - 1 - max(j % 4 for j in piece.shape())
 
-        prev_rotation = self.curr_tetromino.rotation
-        self.curr_tetromino.rotate()
-        if not self._intersects():
-            valid_actions.append(Action.ROTATE)
-        self.curr_tetromino.rotation = prev_rotation
+            for x in range(min_x, max_x + 1):
+                piece.x = x
+                piece.y = 0
+                if not self._intersects():
+                    valid_actions.append(Action(x=x, rotation=rotation))
 
-        valid_actions.append(Action.SOFT_DROP)
-        valid_actions.append(Action.HARD_DROP)
+        piece.x, piece.y, piece.rotation = prev_x, prev_y, prev_rotation
         return valid_actions
 
     def _new_tetromino(self) -> None:
@@ -215,16 +262,10 @@ class TetrisEnv:
 
     def _move(self, action: Action) -> None:
         """Perform the action that was chosen by the agent."""
-        if action == Action.MOVE_LEFT:
-            self._move_sideways(-1)
-        elif action == Action.MOVE_RIGHT:
-            self._move_sideways(1)
-        elif action == Action.ROTATE:
-            self._rotate()
-        elif action == Action.SOFT_DROP:
-            self._soft_drop()
-        elif action == Action.HARD_DROP:
-            self._hard_drop()
+        self.curr_tetromino.rotation = action.rotation
+        self.curr_tetromino.x = action.x
+        self.curr_tetromino.y = 0
+        self._hard_drop()
 
     def _move_sideways(self, dx: int) -> None:
         self.curr_tetromino.x += dx
